@@ -4,7 +4,19 @@ import connectDB from "./db/index.js";
 
 dotenv.config({path: './env'}); // load environment variables from.env file
 
-connectDB()
+connectDB() //this is asynchronous so it will return a promise
+.then(()=>{
+    app.on("error",(err)=>{
+        console.log("ERROR could not connect to Mongo");
+        throw err;
+    })
+    app.listen(process.env.PORT || 8000,()=>{
+        console.log(`Server running on port ${process.env.PORT}`);    // log the server listening on port
+    })
+})
+.catch((err)=>{
+    console.log("MONGODB connection falied!!",err);
+})
 
 
 
