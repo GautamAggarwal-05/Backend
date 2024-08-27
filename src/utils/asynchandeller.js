@@ -1,5 +1,6 @@
+//iska fayda yeh hai ki har cheez ko try catch aur promises mai nahi dalna padega controllers likhte hue this is just a wrapper 
 const asynchandler = (requestHandler)=>{
-    (req,res,next)=>{
+    return (req,res,next)=>{
         Promise.resolve(requestHandler(req,res,next))
         .catch((err)=> next(err));
     }
