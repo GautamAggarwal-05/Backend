@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
 // save ->event  and yaha pai call back mai dont use arrow function because it does not have this context but iss case mai hame this lagega to access userSchema remember ~ these functions take time
 userSchema.pre("save", async function(next){
     if(!this.isModified("password")) return next(); // if password not changed then just skip the process
-    this.password = bcrypt(this.password,10) // round ->10
+    this.password = await bcrypt(this.password,10) // round ->10
     next(); 
     //but abh ek problem hai even we change like avatar then also before saving it will change password so run only when password is send  when -> (creation ,updation,new password set)
 })// pre-> to execute code just before data is going to be stored in database
