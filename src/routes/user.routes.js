@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { registerUser } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -16,4 +17,9 @@ router.route('/register').post(
             maxCount: 1
         }
 ]),registerUser)
+//post beacuse ham info lere hai
+router.route('/login').post(loginUser)
+
+//secured route due to token
+router.route('/logout').post(verifyJWT , logoutUser) // isse middleware ka next() batayega ki verifyJwt kai baad logoutuser chalao
 export default router;
