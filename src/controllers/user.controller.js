@@ -27,7 +27,7 @@ const registerUser = asynchandler( async(req,res) =>{
             throw new ApiError(400,"All fields are required")
         }
         //this User can communiacte with our database
-        const existedUser = User.findOne({
+        const existedUser = await User.findOne({
             $or:[{username},{email}]
         })// we have to check either username or email exists
         console.log("existedUser",existedUser)
@@ -38,17 +38,22 @@ const registerUser = asynchandler( async(req,res) =>{
         console.log("req.files:",req.files)
         //to acess file multer gave us .files
         const avatarLocalPath = req.files?.avatar[0]?.path;
-        const coverImageLocalPath = req.files?.coverImage[0]?.path;
+        // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+        let coverImageLocalPath;
+        if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+            coverImageLocalPath = req.files.coverImage[0].path;
+        }
 
         if(!avatarLocalPath){
-            throw new ApiError(400,"Avatar file is required")
+            throw new ApiError(400,"Avatar file is required:localpath")
         }
 
         const avatar = await uploadOnCloudinary(avatarLocalPath)
         const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
         if(!avatar){
-            throw new ApiError(400,"Avatar file is required")
+            throw new ApiError(400,"Avatar file is required:cloudinary")
         }
 
         const user = await User.create({
