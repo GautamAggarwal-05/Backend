@@ -197,4 +197,99 @@ const refreshAccessToken = asynchandler(async(req,res) =>{
     }
 })
 
-export { registerUser,loginUser,logoutUser,refreshAccessToken }
+const changeCurrentPassword = asynchandler(async(req,res)=>{
+
+    const {oldPassword,newPassword} = req.body
+    //agar vo password change kar para hai it means vo logged in so vo middleware sai gaya hoga means req mai user hai jaha sai ham id nikal sakte hai 
+    const user = await User.findById(req.user?._id)
+
+    const isPasswordCorrect =  user.isPasswordCorrect(oldPassword)
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"Invalid old password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+
+    return res.status(200).json(new ApiResponse(200,{},"Password changed successfully"))
+})
+
+const getCurrentUser = asynchandler((req,res)=>{
+    return res.status(200)
+    .json(new ApiResponse(200,req.user,"current user fetched successfully"))
+})
+
+const updateAccountDetails = asynchandler((req,res)=>{
+    const {fullname,email} = req.body;
+    if(!fullname || !email){
+        return new ApiError(404,"All fields are required")
+    }
+
+    const user = User.findByIdAndUpdate(req.user?._id,{ // we directly called and updated user 
+        $set:{
+            fullname,
+            email:email, // both ways are correct
+        }
+    },{
+        // new:true means jo values update hui hai vo return kardo
+        new:true
+    }).select("-password")
+
+    return res.status(200).json(200,{user},"Account details updated successfully")
+})
+
+const updateUserAvatar = asynchandler(async(req,res)=>{
+    //this time we write file not files becasue now we are only takef one field -> go check user.router register
+    const avatarLocalpath = req.file?.path
+
+    if(!avatarLocalpath){
+        throw new ApiError(400,"Avatar file is required")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalpath)
+    if(!avatar.url){
+        throw new ApiError(400,"Failed to upload avatar to cloudinary")
+    }
+
+    const user  = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set:{// set is an operator of database
+                avatar:avatar.url
+            }
+        },
+        {new:true}
+    )
+    return res.status(200).json(200,{user},"Avatar updated successfully")
+})
+const updateUserCoverImage = asynchandler(async(req,res)=>{
+    //this time we write file not files becasue now we are only takef one field -> go check user.router register
+    const coverImageLocalpath = req.file?.path
+
+    if(!coverImageLocalpath){
+        throw new ApiError(400,"Avatar file is required")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalpath)
+    if(!coverImage.url){
+        throw new ApiError(400,"Failed to upload coverImage to cloudinary")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set:{// set is an operator of database
+                coverImage:coverImage.url
+            }
+        },
+        {new:true}
+    )
+    return res.status(200).json(200,{user},"Avatar updated successfully")
+})
+export { registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage } 
