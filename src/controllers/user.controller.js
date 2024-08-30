@@ -3,24 +3,25 @@ import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.models.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken"
+import mongoose from "mongoose";
 
-
-const generateAcessRefreshToken = async(userId)=>{
+const generateAccessAndRefereshTokens = async(userId) =>{
     try {
-            const user = await User.findById(userId)
-            const accessToken =  user.generateAcessToken()
-            const refreshToken = user.generateRefreshToken()
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
 
-            user.refreshToken = refreshToken
-            await user.save({validateBeforeSave: false}) // save is the method of mongoose which will kick in all properties of models 
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
 
-            return {accessToken, refreshToken}
+        return {accessToken, refreshToken}
+
 
     } catch (error) {
-            throw new ApiError(500,"something went wrong while generating refresh and access token")
+        throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
 }
-
 
 
 const registerUser = asynchandler( async(req,res) =>{
@@ -97,11 +98,11 @@ const registerUser = asynchandler( async(req,res) =>{
        )
 })
 
-const loginUser = asynchandler(async (req,res)=>{
+const loginUser = asynchandler(async(req,res)=>{
     // req body -> data
     const {email,username,password} = req.body
     // username or email
-    if(!username || !email){
+    if(!username && !email){
         throw new ApiError(400,"Email or Username and Password are required")
     }
     //find the user 
@@ -118,10 +119,10 @@ const loginUser = asynchandler(async (req,res)=>{
         throw new ApiError(401,"Invalid user credentials")
     }
     // access and refresh token generate
-    const {accessToken,refreshToken}  = await generateAcessRefreshToken(user._id)
+    const {accessToken,refreshToken}  = await generateAccessAndRefereshTokens(user._id)
     // send tokens ->cookies
     // due to using findOne we got some unwanted fields like password which we dont want to show to user 
-   const loogedInUser =  User.findById(user._id).select("-password -refershToken")
+   const loogedInUser = await  User.findById(user._id).select("-password -refreshToken")
 
    const options = {
     httpOnly:true, // cookies will only be modified by server
@@ -130,7 +131,7 @@ const loginUser = asynchandler(async (req,res)=>{
 
    return res.status(200)
    .cookie("accessToken",accessToken,options)
-   .cookie("refershToken",refreshToken,options)
+   .cookie("refreshToken",refreshToken,options)
    .json(new ApiResponse(200,{
     user: loogedInUser, accessToken,refreshToken},"User Logged in Successfully")    );
 })
@@ -158,4 +159,42 @@ const logoutUser = asynchandler(async(req,res) => {
     .json(new ApiResponse(200,{},"User Logged Out"))    
 })
 
-export { registerUser,loginUser,logoutUser }
+const refreshAccessToken = asynchandler(async(req,res) =>{
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if(!incomingRefreshToken){
+        throw new ApiError(404,"Unauthorised request")
+    }
+
+    //verify refresh token beacuse vo encrpyted hota hai -> jo token database mai hai aur jo user pai gaya vo same nahi hote  it takes token and secret token
+
+    try {
+        const decodedToken = jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedToken?._id)
+        if(!user){
+            throw new ApiError(401,"Invalid Refresh Token")
+        }
+    
+        if(incomingRefreshToken !== user?.refreshToken){
+            throw new ApiError(401,"Refresh Token is expired or used") 
+        }
+    
+        // now we can create new token 
+        const options = {
+            httpOnly:true,
+            secure:true
+        }
+    
+        const {accessToken,newRefreshToken} = await generateAccessAndRefereshTokens(user._id)
+    
+        return res.status(200)
+        .cookies("accessToken",accessToken,options)
+        .cookies("refreshToken",newRefreshToken,options)
+        .json(new ApiResponse(200,{accessToken, refreshToken: newRefreshToken},"Access Token Refreshed "))
+    } catch (error) {
+        throw new ApiError(500,error?.message || "Something went wrong while refreshing access token")
+    }
+})
+
+export { registerUser,loginUser,logoutUser,refreshAccessToken }

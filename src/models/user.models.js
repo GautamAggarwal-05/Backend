@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose,{Schema} from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
@@ -62,7 +62,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
     return await bcrypt.compare(password,this.password) // user send password encrypted password
 }
 
-userSchema.methods.generateAcessToken = function(){
+userSchema.methods.generateAccessToken = function(){
     //jwt sign method can generate tokens
    return  jwt.sign({ //payload -> yeh sab rakho tokens mai 
         _id:this._id,
@@ -72,16 +72,17 @@ userSchema.methods.generateAcessToken = function(){
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-        expriresIn:process.env.ACESS_TOKEN_EXPIRY
+        expiresIn:process.env.ACCESS_TOKEN_EXPIRY
     })
 }
 userSchema.methods.generateRefreshToken = function(){
-    return  jwt.sign({ //payload -> yeh sab rakho tokens mai 
-        _id:this._id,
+    return  jwt.sign(
+    { //payload -> yeh sab rakho tokens mai 
+        _id: this._id,
     },
-    process.env.REFERESH_TOKEN_SECRET,
+    process.env.REFRESH_TOKEN_SECRET,
     {
-        expriresIn:process.env.REFERESH_TOKEN_EXPIRY
+        expiresIn:process.env.REFRESH_TOKEN_EXPIRY
     })
 }
 
